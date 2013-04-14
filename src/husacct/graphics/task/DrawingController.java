@@ -271,7 +271,7 @@ public abstract class DrawingController extends DrawingSettingsController {
 
 	@Override
 	public void exportToImage() {
-		this.drawing.showExportToImagePanel();
+		this.drawingView.showExportToImagePanel();
 	}
 
 	@Override

@@ -29,9 +29,9 @@ import org.jhotdraw.draw.io.ImageOutputFormat;
 public class Drawing extends QuadTreeDrawing {
 	private static final long serialVersionUID = 3212318618672284266L;
 	private ArrayList<BaseFigure> hiddenFigures;
-	private Logger logger = Logger.getLogger(Drawing.class);
-	private FileManager filemanager = new FileManager();
-	private File selectedFile = filemanager.getFile();
+	//private Logger logger = Logger.getLogger(Drawing.class);
+	//private FileManager filemanager = new FileManager();
+	//private File selectedFile = filemanager.getFile();
 	private FigureMap figureMap;
 
 	public Drawing() {
@@ -42,8 +42,12 @@ public class Drawing extends QuadTreeDrawing {
 	public void setFigureMap(FigureMap map) {
 		figureMap = map;
 	}
+	
+	public ArrayList<BaseFigure> getHiddenFigures(){
+		return hiddenFigures;
+	}
 
-	public void showExportToImagePanel() {
+	/*public void showExportToImagePanel() {
 		try {
 			ImageOutputFormat imageoutputformat = new ImageOutputFormat();
 			JFileChooser fileChooser = new JFileChooser();
@@ -62,7 +66,7 @@ public class Drawing extends QuadTreeDrawing {
 		} catch (IOException e) {
 			logger.debug("Cannot save file to " + selectedFile.getAbsolutePath());
 		}
-	}
+	}*/
 
 	public BaseFigure[] getShownModules() {
 		ArrayList<BaseFigure> moduleFigures = new ArrayList<BaseFigure>();
@@ -128,6 +132,9 @@ public class Drawing extends QuadTreeDrawing {
 	public void restoreHiddenFigures(){
 		for (BaseFigure figure : hiddenFigures) {
 			figure.setEnabled(true);
+		}
+		while(!hiddenFigures.isEmpty()){
+			hiddenFigures.clear();
 		}
 	}
 
