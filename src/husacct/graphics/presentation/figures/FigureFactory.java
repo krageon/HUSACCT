@@ -3,7 +3,9 @@ package husacct.graphics.presentation.figures;
 import husacct.common.dto.AbstractDTO;
 import husacct.common.dto.AnalysedModuleDTO;
 import husacct.common.dto.DependencyDTO;
+import husacct.common.dto.ExternalSystemDTO;
 import husacct.common.dto.ModuleDTO;
+import husacct.common.dto.ProjectDTO;
 import husacct.common.dto.ViolationDTO;
 import husacct.graphics.presentation.decorators.ViolationsDecorator;
 
@@ -13,45 +15,52 @@ import org.apache.log4j.Logger;
 
 public final class FigureFactory {
 	protected Logger logger = Logger.getLogger(FigureFactory.class);
+	private String PROJECT_TYPE = "Project";
+	private String EXTERNALSYSTEM_TYPE = "ExternalSystem";
+
+	public RelationFigure createFigure(DependencyDTO[] dependencyDTOs) {
+		if (dependencyDTOs.length <= 0) {
+			throw new RuntimeException("No dependencies received. Cannot create a dependency figure.");
+		}
+		return new RelationFigure("Dependency from " + dependencyDTOs[0].from + " to " + dependencyDTOs[0].to, false, dependencyDTOs.length);
+	}
+
+	public ViolationsDecorator createViolationsDecorator(ViolationDTO[] violationDTOs) {
+		Color highestColor = null;
+		if (violationDTOs.length <= 0) {
+			logger.warn("No violations received. Cannot create a violation figure.");
+		} else{
+			highestColor = violationDTOs[0].severityColor;
+			if (highestColor == null) {
+				logger.warn("No violation severity color found! Resetting to the default 'Color.RED'.");
+				highestColor = Color.RED;
+			}
+		}
+		return new ViolationsDecorator(highestColor);
+	}
+
+	public RelationFigure createFigure(ViolationDTO[] violationDTOs) {
+		if (violationDTOs.length == 0) {
+			throw new RuntimeException("No violations received. Cannot create a violation figure.");
+		}
+
+		RelationFigure violatedRelationFigure = new RelationFigure("Violated dependency from " + violationDTOs[0].fromClasspath + " to " + violationDTOs[0].toClasspath, true, violationDTOs.length);
+		violatedRelationFigure.addDecorator(createViolationsDecorator(violationDTOs));
+		return violatedRelationFigure;
+	}
 
 	public BaseFigure createFigure(AbstractDTO dto) {
-		BaseFigure createdFigure = null;
-
-		if (dto instanceof ModuleDTO || dto instanceof AnalysedModuleDTO)
-			createdFigure = createModuleFigure(dto);
-
-		if (null == createdFigure)
-			throw new RuntimeException("Unimplemented dto type '"
-					+ (null == dto ? "DTO=null" : dto.getClass()
-							.getSimpleName()) + "' passed to FigureFactory");
+		BaseFigure createdFigure = createModuleFigure(dto);
+		
+		if (createdFigure == null) {
+			throw new RuntimeException("Unimplemented dto type '" + (dto == null ? "DTO=null" : dto.getClass().getSimpleName()) + "' passed to FigureFactory");
+		}
 		return createdFigure;
 	}
 
 	public BaseFigure createFigure(AbstractDTO dto, ViolationDTO[] violationDTOs) {
 		BaseFigure createdFigure = createFigure(dto);
 		return createdFigure;
-	}
-
-	public RelationFigure createFigure(DependencyDTO[] dependencyDTOs) {
-		if (dependencyDTOs.length <= 0)
-			throw new RuntimeException(
-					"No dependencies received. Cannot create a dependency figure.");
-		return new RelationFigure("Dependency from " + dependencyDTOs[0].from
-				+ " to " + dependencyDTOs[0].to, false, dependencyDTOs.length);
-	}
-
-	public RelationFigure createFigure(ViolationDTO[] violationDTOs) {
-		if (violationDTOs.length == 0)
-			throw new RuntimeException(
-					"No violations received. Cannot create a violation figure.");
-
-		RelationFigure violatedRelationFigure = new RelationFigure(
-				"Violated dependency from " + violationDTOs[0].fromClasspath
-						+ " to " + violationDTOs[0].toClasspath, true,
-				violationDTOs.length);
-		violatedRelationFigure
-				.addDecorator(createViolationsDecorator(violationDTOs));
-		return violatedRelationFigure;
 	}
 
 	private BaseFigure createModuleFigure(AbstractDTO dto) {
@@ -64,13 +73,20 @@ public final class FigureFactory {
 		} else if (dto instanceof AnalysedModuleDTO) {
 			type = ((AnalysedModuleDTO) dto).type;
 			name = ((AnalysedModuleDTO) dto).name;
-		} else
-			throw new RuntimeException("DTO type '"
-					+ dto.getClass().getSimpleName()
-					+ "' is not recognized as a module dto.");
+		} else if (dto instanceof ExternalSystemDTO) {
+			type = EXTERNALSYSTEM_TYPE;
+			name = ((ExternalSystemDTO) dto).systemPackage;
+		} else if (dto instanceof ProjectDTO){
+			type = PROJECT_TYPE;
+			name = ((ProjectDTO) dto).name;
+		} else {
+			return null;
+		}
 
 		// TODO check these values with the define team
-		if (type.toLowerCase().equals("layer"))
+		if (type.toLowerCase().equals("project"))
+			return new ProjectFigure(name);
+		else if (type.toLowerCase().equals("layer"))
 			return new LayerFigure(name);
 		else if (type.toLowerCase().equals("component"))
 			return new ComponentFigure(name);
@@ -84,6 +100,8 @@ public final class FigureFactory {
 			return new PackageFigure(name);
 		else if (type.toLowerCase().equals("subsystem"))
 			return new SubsystemFigure(name);
+		else if (type.toLowerCase().equals("externalsystem"))
+			return new ExternalSystemFigure(name);
 		else {
 			logger.debug("Type " + type.toLowerCase()
 					+ " is not supported. Created a ModuleFigure instead.");
@@ -93,26 +111,5 @@ public final class FigureFactory {
 
 	public ParentFigure createParentFigure(String parentName) {
 		return new ParentFigure(parentName);
-	}
-
-	public ViolationsDecorator createViolationsDecorator(
-			ViolationDTO[] violationDTOs) {
-		if (violationDTOs.length <= 0)
-			throw new RuntimeException(
-					"No violations received. Cannot create a violation figure.");
-
-		Color highestColor = null;
-		try {
-			// The violations are sorted on severity order. Highest are first in
-			// the array.
-			highestColor = violationDTOs[0].severityColor;
-		} catch (Exception e) {
-			// See if-statement below
-		}
-		if (null == highestColor) {
-			logger.warn("No violation severity color found! Resetting to the default 'Color.RED'.");
-			highestColor = Color.RED;
-		}
-		return new ViolationsDecorator(highestColor);
 	}
 }
